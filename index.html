@@ -277,7 +277,7 @@
             console.log(`📌 Click Recorded at: ${currentTime}s`);
         });
 
-        audioPlayer.addEventListener("ended", function() {
+        audioPlayer.addEventListener("ended", function () {
             reviewSection.style.display = "block";
             clickReview.innerHTML = "";
 
@@ -295,9 +295,22 @@
 
                 const snippetPlayer = document.createElement("audio");
                 snippetPlayer.controls = true;
+                snippetPlayer.style.display = "block";
+                snippetPlayer.style.margin = "10px 0";
                 snippetPlayer.src = audioPlayer.src;
-                snippetPlayer.currentTime = Math.max(0, time - 2);
-                
+
+                snippetPlayer.addEventListener("canplay", function () {
+                    snippetPlayer.currentTime = Math.max(0, time - 2);
+                    setTimeout(() => {
+                        snippetPlayer.play();
+                        setTimeout(() => {
+                            snippetPlayer.pause();
+                        }, 2000);
+                    }, 500);
+                });
+
+                snippetPlayer.load();
+
                 const textBox = document.createElement("textarea");
                 textBox.placeholder = "Why did you click?";
                 textBox.dataset.time = time;
