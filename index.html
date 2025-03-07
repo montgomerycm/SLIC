@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Experiment</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-        button { padding: 10px 20px; font-size: 18px; margin-top: 20px; }
-        .review-item { margin-top: 20px; padding: 10px; border: 1px solid #ddd; }
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f9f9f9; }
+        button { padding: 10px 20px; font-size: 18px; margin-top: 20px; border: none; border-radius: 5px; background-color: #007bff; color: white; cursor: pointer; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        .review-item { margin-top: 20px; padding: 15px; border-radius: 8px; background: white; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); }
+        .disabled { opacity: 0.5; pointer-events: none; }
+        .transcript-container { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+        .transcript-marker { display: block; text-align: center; margin-top: 5px; font-size: 20px; color: red; }
+        textarea { width: 100%; height: 50px; margin-top: 10px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+        .checkbox-group { margin-top: 10px; display: flex; justify-content: center; gap: 15px; }
+        .checkbox-group label { font-size: 16px; }
     </style>
 </head>
 <body>
@@ -15,7 +22,7 @@
     <p>Listen to the audio and click the button when you hear something notable.</p>
     
     <audio id="audioPlayer" controls>
-       <source src="<source src="https://montgomerycm.github.io/SLIC/speaker2093_Sheffield.mp3" type="audio/mp3">
+        <source src="https://montgomerycm.github.io/SLIC/speaker2093_Sheffield.mp3" type="audio/mp3">
         Your browser does not support the audio element.
     </audio>
     
@@ -29,6 +36,7 @@
     
     <script>
         const clickData = [];
+        let activeSnippet = null;
         const audioPlayer = document.getElementById("audioPlayer");
         const clickButton = document.getElementById("clickButton");
         const reviewSection = document.getElementById("reviewSection");
@@ -263,18 +271,19 @@
             {"start": 65.74, "end": 66.29, "word": "feast" },
             {"start": 66.29, "end": 66.872, "word": "PAUSE" }
         ];
+      
+        audioPlayer.addEventListener("play", function() {
+            audioPlayer.controls = false; // Hide controls to prevent seeking
+        });
 
-        function matchWords(timestamp) {
-            const startRange = timestamp - 2;
-            const endRange = timestamp + 2;
-            return transcript.filter(segment => segment.start <= endRange && segment.end >= startRange)
+        function getTranscriptSnippet(timestamp) {
+            return transcript.filter(segment => segment.start >= timestamp - 2.5 && segment.end <= timestamp + 2.5)
                              .map(segment => segment.word).join(" ") || "No transcript available.";
         }
 
         clickButton.addEventListener("click", function() {
             const currentTime = audioPlayer.currentTime.toFixed(2);
             clickData.push(parseFloat(currentTime));
-            console.log(`📌 Click Recorded at: ${currentTime}s`);
         });
 
         audioPlayer.addEventListener("ended", function () {
@@ -282,51 +291,63 @@
             clickReview.innerHTML = "";
 
             clickData.forEach((time, index) => {
-                const transcriptText = matchWords(time);
+                const transcriptSnippet = getTranscriptSnippet(time);
                 
                 const reviewItem = document.createElement("div");
                 reviewItem.className = "review-item";
 
                 const clickInfo = document.createElement("p");
-                clickInfo.textContent = `Click ${index + 1}: ${time}s`;
+                clickInfo.innerHTML = `Click ${index + 1}: ${time}s`;
+
+                const contextContainer = document.createElement("div");
+                contextContainer.className = "transcript-container";
 
                 const contextInfo = document.createElement("p");
-                contextInfo.textContent = `Context: ${transcriptText}`;
+                contextInfo.innerHTML = transcriptSnippet;
 
-                const snippetContainer = document.createElement("div");
-
-                const snippetPlayer = document.createElement("audio");
-                snippetPlayer.controls = true;
-                snippetPlayer.style.display = "block";
-                snippetPlayer.style.margin = "10px 0";
-                snippetPlayer.src = audioPlayer.src;
-
-                // Snippet button to manually trigger playback
                 const playSnippetButton = document.createElement("button");
                 playSnippetButton.innerText = "Play Snippet";
-                playSnippetButton.style.marginTop = "10px";
-                playSnippetButton.style.display = "block";
-
                 playSnippetButton.addEventListener("click", function () {
-                    snippetPlayer.currentTime = Math.max(0, time - 2);
-                    snippetPlayer.play().catch(error => console.error("❌ Playback error:", error));
+                    if (activeSnippet) {
+                        activeSnippet.pause();
+                    }
+                    activeSnippet = new Audio("https://montgomerycm.github.io/SLIC/speaker2093_Sheffield.mp3");
+                    activeSnippet.currentTime = Math.max(0, time - 2.5);
+                    activeSnippet.play();
+                    setTimeout(() => activeSnippet.pause(), 5000);
                 });
 
                 const textBox = document.createElement("textarea");
                 textBox.placeholder = "Why did you click?";
-                textBox.dataset.time = time;
-                textBox.style.width = "100%";
-                textBox.style.height = "50px";
-                textBox.style.marginTop = "5px";
 
-                snippetContainer.appendChild(snippetPlayer);
-                snippetContainer.appendChild(playSnippetButton);
-
+                const checkboxGroup = document.createElement("div");
+                checkboxGroup.className = "checkbox-group";
+                
+                const dontKnowLabel = document.createElement("label");
+                const dontKnowCheckbox = document.createElement("input");
+                dontKnowCheckbox.type = "radio";
+                dontKnowCheckbox.name = `option-${index}`;
+                dontKnowCheckbox.value = "dont-know";
+                dontKnowLabel.appendChild(dontKnowCheckbox);
+                dontKnowLabel.appendChild(document.createTextNode("Don't know"));
+                
+                const mistakeLabel = document.createElement("label");
+                const mistakeCheckbox = document.createElement("input");
+                mistakeCheckbox.type = "radio";
+                mistakeCheckbox.name = `option-${index}`;
+                mistakeCheckbox.value = "mistake";
+                mistakeLabel.appendChild(mistakeCheckbox);
+                mistakeLabel.appendChild(document.createTextNode("I made a mistake"));
+                
+                checkboxGroup.appendChild(dontKnowLabel);
+                checkboxGroup.appendChild(mistakeLabel);
+                
                 reviewItem.appendChild(clickInfo);
+                reviewItem.appendChild(contextContainer);
                 reviewItem.appendChild(contextInfo);
-                reviewItem.appendChild(snippetContainer);
+                reviewItem.appendChild(playSnippetButton);
                 reviewItem.appendChild(textBox);
-
+                reviewItem.appendChild(checkboxGroup);
                 clickReview.appendChild(reviewItem);
             });
         });
