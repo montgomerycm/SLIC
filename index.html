@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Experiment</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        button { padding: 10px 20px; font-size: 18px; margin-top: 20px; }
+        .review-item { margin-top: 20px; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Audio Experiment</h1>
+    <p>Listen to the audio and click the button when you hear something notable.</p>
+    
+    <audio id="audioPlayer" controls>
+        <source src="https://shef.qualtrics.com/ControlPanel/File.php?F=F_kVg8vZjw3Fea6Un" type="audio/wav">
+        Your browser does not support the audio element.
+    </audio>
+    
+    <br>
+    <button id="clickButton">Notable Event</button>
+    
+    <div id="reviewSection" style="display: none; margin-top: 20px;">
+        <h2>Review Your Clicks</h2>
+        <div id="clickReview"></div>
+    </div>
+    
+    <script>
+        const clickData = [];
+        const audioPlayer = document.getElementById("audioPlayer");
+        const clickButton = document.getElementById("clickButton");
+        const reviewSection = document.getElementById("reviewSection");
+        const clickReview = document.getElementById("clickReview");
+
+        const transcript = [
+            { start: 0.0, end: 4.44, word: "PAUSE" },
+            { start: 4.44, end: 4.75, word: "there" },
+            { start: 4.75, end: 4.98, word: "was" },
+            { start: 4.98, end: 5.3, word: "once" },
+            { start: 5.3, end: 5.33, word: "a" },
+            { start: 5.33, end: 5.53, word: "poor" },
+            { start: 5.53, end: 6.01, word: "shepherd" },
+            { start: 6.01, end: 6.19, word: "boy" }
+        ];
+
+        function matchWords(timestamp) {
+            const startRange = timestamp - 2;
+            const endRange = timestamp + 2;
+            return transcript.filter(segment => segment.start <= endRange && segment.end >= startRange)
+                             .map(segment => segment.word).join(" ") || "No transcript available.";
+        }
+
+        clickButton.addEventListener("click", function() {
+            const currentTime = audioPlayer.currentTime.toFixed(2);
+            clickData.push(parseFloat(currentTime));
+            console.log(`📌 Click Recorded at: ${currentTime}s`);
+        });
+
+        audioPlayer.addEventListener("ended", function() {
+            reviewSection.style.display = "block";
+            clickReview.innerHTML = "";
+
+            clickData.forEach((time, index) => {
+                const transcriptText = matchWords(time);
+                
+                const reviewItem = document.createElement("div");
+                reviewItem.className = "review-item";
+
+                const clickInfo = document.createElement("p");
+                clickInfo.textContent = `Click ${index + 1}: ${time}s`;
+
+                const contextInfo = document.createElement("p");
+                contextInfo.textContent = `Context: ${transcriptText}`;
+
+                const snippetPlayer = document.createElement("audio");
+                snippetPlayer.controls = true;
+                snippetPlayer.src = audioPlayer.src;
+                snippetPlayer.currentTime = Math.max(0, time - 2);
+                
+                const textBox = document.createElement("textarea");
+                textBox.placeholder = "Why did you click?";
+                textBox.dataset.time = time;
+                textBox.style.width = "100%";
+                textBox.style.height = "50px";
+                textBox.style.marginTop = "5px";
+
+                reviewItem.appendChild(clickInfo);
+                reviewItem.appendChild(contextInfo);
+                reviewItem.appendChild(snippetPlayer);
+                reviewItem.appendChild(textBox);
+
+                clickReview.appendChild(reviewItem);
+            });
+        });
+    </script>
+</body>
+</html>
